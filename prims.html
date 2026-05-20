@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prim&rsquo;s · Minimum Spanning Tree</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f4f0e6;
+    --bg-soft:#ece7d8;
+    --ink:#1c1c1c;
+    --ink-2:#6b6862;
+    --ink-3:#a39e90;
+    --line:#dcd6c5;
+    --line-2:#c4bda9;
+    --accent:#c8553d;
+    --accent-soft:#f1dfd6;
+  }
+  *{box-sizing:border-box}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Outfit',system-ui,sans-serif;font-weight:400}
+  body{min-height:100vh}
+  .serif{font-family:'Fraunces',serif;letter-spacing:-0.015em}
+  .it{font-style:italic}
+
+  .card{background:#fdfbf5;border:1px solid var(--line);border-radius:14px}
+  .label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);font-weight:500}
+  .hr{height:1px;background:var(--line);width:100%}
+
+  /* matrix */
+  .matrix{display:grid;gap:4px}
+  .mcell input{
+    width:100%;height:36px;background:#fff;border:1px solid var(--line);border-radius:8px;
+    color:var(--ink);text-align:center;font-family:'Outfit',sans-serif;font-size:14px;font-weight:500;
+    transition:border-color .2s,box-shadow .2s;outline:none;
+  }
+  .mcell input:hover{border-color:var(--line-2)}
+  .mcell input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .mcell.diag input{background:var(--bg-soft);color:var(--ink-3)}
+  .mhead{
+    display:flex;align-items:center;justify-content:center;height:36px;
+    font-family:'Fraunces',serif;font-weight:500;font-size:15px;color:var(--ink-2);
+  }
+
+  /* buttons */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:11px 18px;border-radius:10px;
+    font-family:'Outfit',sans-serif;font-weight:500;font-size:14px;
+    cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);
+    transition:all .2s ease;
+  }
+  .btn:hover{border-color:var(--ink);background:var(--bg-soft)}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--ink);color:#fdfbf5;border-color:var(--ink)}
+  .btn-primary:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .btn[disabled]:hover{background:#fff;border-color:var(--line);color:var(--ink)}
+
+  /* chips */
+  .picker{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:8px;
+    background:#fff;border:1px solid var(--line);
+    font-family:'Fraunces',serif;font-weight:500;font-size:16px;color:var(--ink);
+    cursor:pointer;transition:all .2s ease;
+  }
+  .chip:hover{border-color:var(--ink)}
+  .chip.on{background:var(--ink);color:#fdfbf5;border-color:var(--ink)}
+
+  /* slider */
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;background:transparent;height:18px}
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line-2);border-radius:2px}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--accent);margin-top:-6px;cursor:pointer;border:2px solid #fdfbf5;
+  }
+  input[type=range]::-moz-range-track{height:2px;background:var(--line-2);border-radius:2px}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid #fdfbf5;cursor:pointer}
+
+  /* graph */
+  .edge{stroke:var(--line-2);stroke-width:1.5;transition:stroke .4s,stroke-width .4s,opacity .3s}
+  .edge.look{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 4;animation:dash 1s linear infinite}
+  .edge.candidate{stroke:var(--accent);stroke-width:1.8;stroke-dasharray:6 4;opacity:.8}
+  .edge.mst{stroke:var(--ink);stroke-width:2.5}
+  @keyframes dash{to{stroke-dashoffset:-18}}
+
+  .node circle.body{
+    fill:#fdfbf5;stroke:var(--line-2);stroke-width:1.5;
+    transition:fill .35s,stroke .35s,stroke-width .35s;
+  }
+  .node.src circle.body{stroke:var(--ink);stroke-width:2}
+  .node.in-mst circle.body{fill:var(--ink);stroke:var(--ink)}
+  .node.frontier circle.body{stroke:var(--accent);stroke-dasharray:3 3}
+  .node.now circle.body{fill:var(--accent);stroke:var(--accent);stroke-width:2}
+
+  .node .lbl{
+    font-family:'Fraunces',serif;font-weight:500;font-size:18px;fill:var(--ink);
+    text-anchor:middle;dominant-baseline:central;transition:fill .35s ease;
+    pointer-events:none;
+  }
+  .node.in-mst .lbl,.node.now .lbl{fill:#fdfbf5}
+
+  /* key badge under each node */
+  .node .key-g{opacity:0;transition:opacity .35s ease}
+  .node .key-g.show{opacity:1}
+  .node .key-bg{fill:#fdfbf5;stroke:var(--line);stroke-width:1}
+  .node .key-txt{
+    font-family:'Outfit',sans-serif;font-weight:600;font-size:11px;fill:var(--ink);
+    text-anchor:middle;dominant-baseline:central;
+  }
+  .node.frontier .key-bg{fill:#fdfbf5;stroke:var(--accent)}
+  .node.frontier .key-txt{fill:var(--accent)}
+  .node.in-mst .key-bg, .node.now .key-bg{fill:var(--ink);stroke:var(--ink)}
+  .node.in-mst .key-txt, .node.now .key-txt{fill:#fdfbf5}
+
+  .weight{
+    font-family:'Outfit',sans-serif;font-weight:500;font-size:12px;fill:var(--ink-2);
+    text-anchor:middle;dominant-baseline:central;
+  }
+  .weight-bg{fill:#fdfbf5;stroke:var(--line);stroke-width:1}
+
+  /* node pop-in */
+  .node{transform-origin:center;transform-box:fill-box}
+  .pop{animation:pop .45s cubic-bezier(.34,1.4,.5,1) backwards}
+  @keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+
+  /* status */
+  .status{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:7px 14px;border-radius:999px;
+    background:#fdfbf5;border:1px solid var(--line);
+    font-size:13px;color:var(--ink-2);
+  }
+  .status .num{font-family:'Fraunces',serif;color:var(--ink);font-weight:500}
+
+  /* now-step highlight */
+  .now-step{
+    margin-top:14px;border-radius:10px;
+    background:var(--bg-soft);
+    border:1px solid var(--line);
+    border-left:3px solid var(--accent);
+    padding:14px 18px;
+    transition:background .4s ease;
+  }
+  .now-step .ns-tag{
+    font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent);font-weight:500;margin-bottom:6px;
+    font-family:'Outfit',sans-serif;
+  }
+  .now-step .ns-text{
+    font-family:'Fraunces',serif;font-size:17px;color:var(--ink);
+    line-height:1.4;letter-spacing:-0.005em;
+  }
+  .now-step.flash{animation:flash .65s ease}
+  @keyframes flash{
+    0%  {background:var(--accent-soft)}
+    100%{background:var(--bg-soft)}
+  }
+
+  /* MST tree visualization */
+  .tree-frame{
+    position:relative;background:#fff;border:1px solid var(--line);
+    border-radius:10px;height:420px;overflow:hidden;
+  }
+  .tree-empty{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--ink-3);font-style:italic;font-family:'Outfit',sans-serif;font-size:13px;
+    text-align:center;padding:20px;
+  }
+
+  #tree-svg{width:100%;height:100%;display:block}
+
+  .tree-edge{
+    stroke:var(--ink);stroke-width:2.5;stroke-linecap:round;
+    stroke-dasharray:600;stroke-dashoffset:600;
+  }
+  .tree-edge.drawn{animation:treeDraw .55s cubic-bezier(.6,0,.4,1) forwards}
+  @keyframes treeDraw{to{stroke-dashoffset:0}}
+
+  .tree-node{transform-origin:center;transform-box:fill-box}
+  .tree-node circle.tree-body{
+    fill:#fdfbf5;stroke:var(--line-2);stroke-width:1.5;
+    transition:fill .4s ease,stroke .4s ease,stroke-width .4s ease;
+  }
+  .tree-node.in-mst circle.tree-body{fill:var(--ink);stroke:var(--ink)}
+  .tree-node.seed circle.tree-body{fill:var(--accent);stroke:var(--accent)}
+  .tree-node.latest circle.tree-body{stroke-width:3}
+  .tree-node.latest:not(.seed) circle.tree-body{stroke:var(--accent)}
+  .tree-node.latest .halo{animation:halo 1.4s ease-out infinite}
+  .tree-node .halo{
+    fill:none;stroke:var(--accent);stroke-width:1.5;opacity:0;
+    transform-origin:center;transform-box:fill-box;
+  }
+  @keyframes halo{
+    0%{opacity:.6;transform:scale(1)}
+    100%{opacity:0;transform:scale(2.2)}
+  }
+  .tree-node .tree-lbl{
+    font-family:'Fraunces',serif;font-weight:500;font-size:18px;fill:var(--ink);
+    text-anchor:middle;dominant-baseline:central;pointer-events:none;
+    transition:fill .35s ease;
+  }
+  .tree-node.in-mst .tree-lbl,
+  .tree-node.seed .tree-lbl{fill:#fdfbf5}
+  .tree-node.pop{animation:treePop .45s cubic-bezier(.34,1.4,.5,1) backwards}
+  @keyframes treePop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+
+  .tree-weight{
+    font-family:'Outfit',sans-serif;font-weight:500;font-size:12px;fill:var(--ink-2);
+    text-anchor:middle;dominant-baseline:central;
+  }
+  .tree-weight-bg{fill:#fff;stroke:var(--line);stroke-width:1}
+  .tree-weight.appearing,.tree-weight-bg.appearing{animation:wfade .4s ease .3s both}
+  @keyframes wfade{from{opacity:0}to{opacity:1}}
+
+  /* small summary strip under tree */
+  .tree-summary{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-top:10px;padding:9px 14px;background:var(--bg-soft);
+    border:1px solid var(--line);border-radius:10px;
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);font-weight:500;
+  }
+  .tree-summary .v{font-family:'Fraunces',serif;font-size:17px;color:var(--accent);letter-spacing:0;text-transform:none}
+
+  /* step history list */
+  .history-box{
+    border:1px solid var(--line);border-radius:10px;
+    background:#fff;
+    overflow-y:auto;
+    display:block;
+    height:300px;
+  }
+  .history-box::-webkit-scrollbar{width:6px}
+  .history-box::-webkit-scrollbar-track{background:transparent}
+  .history-box::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+
+  .hitem{
+    display:grid;grid-template-columns:32px 90px 1fr;gap:14px;
+    padding:10px 14px;border-bottom:1px dashed var(--line);
+    font-size:13px;line-height:1.5;
+    animation:hin .35s ease;
+    align-items:baseline;
+  }
+  .hitem:last-child{border-bottom:none}
+  .hitem .hn{
+    font-family:'Outfit',sans-serif;font-weight:500;font-size:10px;
+    color:var(--ink-3);letter-spacing:.06em;
+    font-variant-numeric:tabular-nums;
+  }
+  .hitem .ht{color:var(--ink)}
+  .hitem .kind{
+    display:inline-block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-3);font-weight:600;
+    font-family:'Outfit',sans-serif;
+  }
+  .hitem.start .kind{color:var(--ink-2)}
+  .hitem.add .kind{color:var(--accent)}
+  .hitem.update .kind{color:var(--accent)}
+  .hitem.check .kind{color:var(--ink-3)}
+  .hitem.done .kind{color:var(--ink)}
+  .hitem.latest{background:var(--accent-soft)}
+  .hitem.empty{grid-template-columns:1fr;text-align:center;padding:22px 12px;color:var(--ink-3);font-style:italic}
+  @keyframes hin{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+
+  /* reveal */
+  .reveal{opacity:0;animation:rev .7s ease forwards}
+  @keyframes rev{to{opacity:1}}
+  .d1{animation-delay:.05s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}.d4{animation-delay:.42s}
+
+  /* nav */
+  .nav-link{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 12px;border-radius:8px;
+    font-size:12px;color:var(--ink-2);
+    border:1px solid var(--line);background:#fdfbf5;
+    transition:all .2s ease;text-decoration:none;
+  }
+  .nav-link:hover{border-color:var(--ink);color:var(--ink)}
+  .nav-link.active{background:var(--ink);color:#fdfbf5;border-color:var(--ink)}
+
+  /* prevent any accidental horizontal scroll */
+  html,body{overflow-x:hidden}
+  .now-step .ns-text,
+  .hitem .ht{overflow-wrap:anywhere;word-break:break-word}
+
+  /* tablet */
+  @media (max-width:900px){
+    .tree-frame{height:380px}
+  }
+  /* mobile */
+  @media (max-width:640px){
+    .mcell input,.mhead{height:32px;font-size:13px;min-width:0}
+    .matrix{gap:3px}
+    .chip{width:32px;height:32px;font-size:14px}
+    .btn{padding:9px 14px;font-size:13px}
+    .status{padding:6px 12px;font-size:12px}
+    .now-step{padding:12px 14px;margin-top:12px}
+    .now-step .ns-text{font-size:15px;line-height:1.45}
+    .now-step .ns-tag{font-size:9px;margin-bottom:4px}
+    .tree-frame{height:340px}
+    .history-box{height:260px}
+    .hitem{grid-template-columns:24px 64px 1fr;gap:10px;padding:8px 11px;font-size:12px}
+    .hitem .kind{font-size:9px;letter-spacing:.14em}
+    .label{font-size:10px}
+    .tree-summary{padding:8px 12px;font-size:10px}
+    .tree-summary .v{font-size:15px}
+    .tree-node circle.tree-body{stroke-width:1.5}
+    main{padding-left:14px!important;padding-right:14px!important}
+  }
+</style>
+</head>
+<body>
+
+<main class="max-w-7xl mx-auto px-5 py-12 md:py-16">
+
+  <header class="mb-8 reveal d1">
+    <div class="flex items-center justify-between mb-3 gap-3 flex-wrap">
+      <div class="label">Algorithm · 002</div>
+      <div class="flex items-center gap-2">
+        <a href="djkstra.html" class="nav-link">Dijkstra</a>
+        <a href="prims.html" class="nav-link active">Prim&rsquo;s</a>
+      </div>
+    </div>
+    <h1 class="serif text-[clamp(40px,7vw,76px)] leading-[0.95]">
+      <span class="it text-[var(--accent)]">Prim&rsquo;s</span><span class="text-[var(--accent)]">.</span>
+    </h1>
+    <p class="mt-3 text-[15px] text-[var(--ink-2)] max-w-md">
+      Step through Prim&rsquo;s algorithm. Pick a seed node &mdash; a minimum spanning tree
+      grows outward, one cheapest edge at a time.
+    </p>
+  </header>
+
+  <!-- ROW 1 · inputs -->
+  <section class="card p-6 mb-6 reveal d2">
+    <div class="grid md:grid-cols-12 gap-6 items-start">
+
+      <div class="md:col-span-3">
+        <div class="label mb-3">Nodes</div>
+        <div class="flex items-center gap-4">
+          <input id="size" type="range" min="3" max="7" value="5" />
+          <span id="size-out" class="serif text-2xl w-6 text-right">5</span>
+        </div>
+        <p class="text-[12px] text-[var(--ink-3)] mt-4 leading-relaxed">
+          Drag the slider to change how many nodes are in the graph.
+        </p>
+      </div>
+
+      <div class="md:col-span-3 md:border-l md:border-[var(--line)] md:pl-6">
+        <div class="label mb-3">Seed node</div>
+        <div class="picker" id="src-picker"></div>
+        <p class="text-[12px] text-[var(--ink-3)] mt-4 leading-relaxed">
+          The MST grows outward from this node, adding cheapest edges first.
+        </p>
+      </div>
+
+      <div class="md:col-span-6 md:border-l md:border-[var(--line)] md:pl-6">
+        <div class="flex items-center justify-between mb-3">
+          <div class="label">Adjacency matrix</div>
+          <button id="shuffle" class="btn !py-1.5 !px-3 !text-[12px]">Shuffle</button>
+        </div>
+        <div id="matrix" class="matrix"></div>
+        <p class="text-[12px] text-[var(--ink-3)] mt-3 leading-relaxed">
+          Each cell is the edge weight between two nodes. <span class="it">0</span> means no edge.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROW 2 · graph (left) · MST construction (right) -->
+  <div class="grid md:grid-cols-12 gap-6 mb-6">
+
+    <!-- GRAPH -->
+    <section class="md:col-span-7 reveal d3">
+      <div class="card p-5 h-full flex flex-col">
+
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <span class="status">
+            <span>Step <span id="step-num" class="num">0</span> / <span id="step-total" class="num">0</span></span>
+          </span>
+          <div class="flex items-center gap-2">
+            <button id="reset" class="btn">Reset</button>
+            <button id="next" class="btn btn-primary">Next →</button>
+          </div>
+        </div>
+
+        <div class="relative">
+          <svg id="graph" viewBox="0 0 600 460" class="w-full h-auto" style="aspect-ratio:600/460">
+            <g id="edges"></g>
+            <g id="nodes"></g>
+          </svg>
+        </div>
+
+        <div id="now-step" class="now-step">
+          <div class="ns-tag">Now</div>
+          <div class="ns-text" id="step-text">Press next to begin</div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-[var(--ink-2)]">
+          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full border border-[var(--ink)]"></span>seed</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full" style="background:var(--accent)"></span>just added</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full" style="background:var(--ink)"></span>in MST</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full" style="border:1.5px dashed var(--accent)"></span>frontier</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-4 h-[2px]" style="background:var(--ink)"></span>MST edge</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- MST TREE -->
+    <section class="md:col-span-5 reveal d3" style="animation-delay:.4s">
+      <div class="card px-5 pt-5 pb-3 h-full flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <div class="label">Spanning tree</div>
+          <span class="text-[11px] text-[var(--ink-3)]" id="mst-count">0 / 0 nodes</span>
+        </div>
+        <div class="tree-frame">
+          <div id="tree-empty" class="tree-empty">no nodes added yet &mdash; press next to begin</div>
+          <svg id="tree-svg" viewBox="0 0 480 400" preserveAspectRatio="xMidYMid meet">
+            <g id="tree-edges"></g>
+            <g id="tree-nodes"></g>
+          </svg>
+        </div>
+        <div class="tree-summary">
+          <span>Total weight</span>
+          <span class="v" id="mst-total">&mdash;</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ROW 3 · step history (full width) -->
+  <div class="reveal d4">
+    <section class="card p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="label">Step history</div>
+        <span class="text-[11px] text-[var(--ink-3)]" id="hist-count">0 steps</span>
+      </div>
+      <div id="history" class="history-box">
+        <div class="hitem empty"><div class="ht">no steps yet &mdash; press next to begin</div></div>
+      </div>
+    </section>
+  </div>
+
+
+</main>
+
+<script>
+const LETTERS=['A','B','C','D','E','F','G','H'];
+const SAMPLE=[
+  [0,3,0,7,0,0,0],
+  [3,0,2,0,6,0,0],
+  [0,2,0,4,5,0,0],
+  [7,0,4,0,0,3,0],
+  [0,6,5,0,0,2,4],
+  [0,0,0,3,2,0,3],
+  [0,0,0,0,4,3,0],
+];
+
+const state={
+  n:5,
+  matrix:[],
+  src:0,
+  steps:[],
+  idx:0,
+  done:false,
+};
+
+const $matrix=document.getElementById('matrix');
+const $size=document.getElementById('size');
+const $sizeOut=document.getElementById('size-out');
+const $srcPicker=document.getElementById('src-picker');
+const $edges=document.getElementById('edges');
+const $nodes=document.getElementById('nodes');
+const $stepText=document.getElementById('step-text');
+const $stepNum=document.getElementById('step-num');
+const $stepTotal=document.getElementById('step-total');
+const $next=document.getElementById('next');
+const $treeSvg=document.getElementById('tree-svg');
+const $treeEdges=document.getElementById('tree-edges');
+const $treeNodes=document.getElementById('tree-nodes');
+const $treeEmpty=document.getElementById('tree-empty');
+const $mstCount=document.getElementById('mst-count');
+const $mstTotal=document.getElementById('mst-total');
+
+// circular tree positions (same order as main graph)
+let treePos={};
+const $nowStep=document.getElementById('now-step');
+const $history=document.getElementById('history');
+const $histCount=document.getElementById('hist-count');
+
+function el(tag,attrs={},text){
+  const e=document.createElement(tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  if(text!==undefined) e.textContent=text;
+  return e;
+}
+function svgEl(tag,attrs={}){
+  const e=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  return e;
+}
+
+function initMatrix(n){
+  state.n=n;
+  state.matrix=[];
+  for(let i=0;i<n;i++){
+    const row=[];
+    for(let j=0;j<n;j++){
+      row.push(i===j?0:(SAMPLE[i]&&SAMPLE[i][j])||0);
+    }
+    state.matrix.push(row);
+  }
+  if(state.src>=n) state.src=0;
+  renderMatrix();
+  renderPickers();
+  layout();
+  renderGraph();
+  rebuild();
+}
+
+function renderMatrix(){
+  const n=state.n;
+  $matrix.style.gridTemplateColumns=`28px repeat(${n},1fr)`;
+  $matrix.innerHTML='';
+  $matrix.appendChild(el('div',{class:'mhead'},''));
+  for(let j=0;j<n;j++) $matrix.appendChild(el('div',{class:'mhead'},LETTERS[j]));
+  for(let i=0;i<n;i++){
+    $matrix.appendChild(el('div',{class:'mhead'},LETTERS[i]));
+    for(let j=0;j<n;j++){
+      const wrap=el('div',{class:'mcell'+(i===j?' diag':'')});
+      const input=el('input',{type:'text',value:state.matrix[i][j]||'',placeholder:i===j?'·':'0','data-i':i,'data-j':j});
+      if(i===j) input.disabled=true;
+      input.addEventListener('input',e=>{
+        let v=parseInt(e.target.value,10);
+        if(isNaN(v)||v<0) v=0;
+        const ii=+e.target.dataset.i,jj=+e.target.dataset.j;
+        state.matrix[ii][jj]=v;
+        state.matrix[jj][ii]=v;
+        const p=$matrix.querySelector(`input[data-i="${jj}"][data-j="${ii}"]`);
+        if(p && document.activeElement!==p) p.value=v||'';
+        renderEdges();
+        rebuild();
+      });
+      wrap.appendChild(input);
+      $matrix.appendChild(wrap);
+    }
+  }
+}
+
+function renderPickers(){
+  $srcPicker.innerHTML='';
+  for(let i=0;i<state.n;i++){
+    const a=el('div',{class:'chip'+(i===state.src?' on':'')},LETTERS[i]);
+    a.addEventListener('click',()=>{
+      state.src=i;
+      renderPickers();applyMarks();rebuild();
+    });
+    $srcPicker.appendChild(a);
+  }
+}
+
+let pos=[];
+function layout(){
+  const cx=300,cy=230,r=170;
+  pos=[];
+  for(let i=0;i<state.n;i++){
+    const a=(i/state.n)*Math.PI*2-Math.PI/2;
+    pos.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r});
+  }
+}
+
+function renderGraph(){
+  renderEdges();
+  renderNodes();
+  applyMarks();
+}
+
+function renderEdges(){
+  $edges.innerHTML='';
+  for(let i=0;i<state.n;i++){
+    for(let j=i+1;j<state.n;j++){
+      const w=state.matrix[i][j];
+      if(w>0){
+        const a=pos[i],b=pos[j];
+        $edges.appendChild(svgEl('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:'edge','data-e':`${i}-${j}`}));
+        const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+        $edges.appendChild(svgEl('circle',{cx:mx,cy:my,r:12,class:'weight-bg'}));
+        const t=svgEl('text',{x:mx,y:my,class:'weight'});
+        t.textContent=w;
+        $edges.appendChild(t);
+      }
+    }
+  }
+}
+
+function renderNodes(){
+  $nodes.innerHTML='';
+  for(let i=0;i<state.n;i++){
+    const p=pos[i];
+    const dx=p.x-300, dy=p.y-230, dl=Math.hypot(dx,dy)||1;
+    const ox=(dx/dl)*38, oy=(dy/dl)*38;
+
+    const g=svgEl('g',{class:'node pop','data-n':i,transform:`translate(${p.x},${p.y})`,style:`animation-delay:${i*50}ms`});
+    g.appendChild(svgEl('circle',{r:24,class:'body'}));
+    const lbl=svgEl('text',{class:'lbl'});
+    lbl.textContent=LETTERS[i];
+    g.appendChild(lbl);
+
+    const dg=svgEl('g',{class:'key-g',transform:`translate(${ox},${oy})`});
+    dg.appendChild(svgEl('rect',{x:-15,y:-9,width:30,height:18,rx:9,class:'key-bg'}));
+    const dt=svgEl('text',{x:0,y:0,class:'key-txt'});
+    dt.textContent='∞';
+    dg.appendChild(dt);
+    g.appendChild(dg);
+
+    $nodes.appendChild(g);
+  }
+}
+
+function applyMarks(){
+  document.querySelectorAll('#graph .node').forEach(g=>{
+    const id=+g.dataset.n;
+    const isPlain = !g.classList.contains('in-mst') && !g.classList.contains('now') && !g.classList.contains('frontier');
+    g.classList.toggle('src', id===state.src && isPlain);
+  });
+}
+
+/* ============================================================
+   PRIM'S ALGORITHM — records every step
+============================================================ */
+function prims(){
+  const n=state.n,m=state.matrix;
+  const key=Array(n).fill(Infinity);
+  const parent=Array(n).fill(null);
+  const inMST=Array(n).fill(false);
+  key[state.src]=0;
+  const steps=[];
+  const mstEdges=[];
+
+  steps.push({
+    type:'start',
+    key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],
+    msg:`Begin Prim&rsquo;s — every node starts with key ∞ except ${LETTERS[state.src]} at 0.`
+  });
+
+  for(let count=0;count<n;count++){
+    // pick min-key non-MST vertex
+    let u=-1, best=Infinity;
+    for(let v=0;v<n;v++) if(!inMST[v] && key[v]<best){best=key[v];u=v}
+    if(u<0 || best===Infinity) break;
+    inMST[u]=true;
+
+    let addedEdge=null;
+    if(parent[u]!==null){
+      addedEdge={u:parent[u],v:u,w:m[parent[u]][u]};
+      mstEdges.push(addedEdge);
+    }
+    steps.push({
+      type:'add', u, edge:addedEdge, order:mstEdges.length + (parent[u]===null?1:0),
+      key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],
+      msg: parent[u]===null
+        ? `Add ${LETTERS[u]} to the MST as the seed node.`
+        : `Add ${LETTERS[u]} via edge ${LETTERS[parent[u]]} &mdash; ${LETTERS[u]} (weight ${m[parent[u]][u]}).`
+    });
+
+    // examine neighbors
+    for(let v=0;v<n;v++){
+      if(m[u][v]>0 && !inMST[v]){
+        const w=m[u][v];
+        if(w<key[v]){
+          const old=key[v];
+          key[v]=w; parent[v]=u;
+          steps.push({
+            type:'update', u, v, w,
+            key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],
+            updated:true,
+            msg:`Edge ${LETTERS[u]} &mdash; ${LETTERS[v]} (${w}) improves ${LETTERS[v]}&rsquo;s best link (was ${old===Infinity?'∞':old}).`
+          });
+        } else {
+          steps.push({
+            type:'check', u, v, w,
+            key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],
+            updated:false,
+            msg:`Edge ${LETTERS[u]} &mdash; ${LETTERS[v]} (${w}) doesn&rsquo;t beat ${LETTERS[v]}&rsquo;s current best ${key[v]}.`
+          });
+        }
+      }
+    }
+  }
+
+  const total = mstEdges.reduce((s,e)=>s+e.w,0);
+  const visited = inMST.filter(x=>x).length;
+  steps.push({
+    type:'done',
+    key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],total,visited,
+    msg: visited===n
+      ? `MST complete — ${mstEdges.length} edges, total weight ${total}.`
+      : `Stopped — only ${visited} of ${n} nodes reachable from ${LETTERS[state.src]}. MST weight ${total}.`
+  });
+  return steps;
+}
+
+function rebuild(){
+  state.steps = prims();
+  state.idx = 0;
+  state.done = false;
+  clearGraphState();
+  $stepNum.textContent = '0';
+  $stepTotal.textContent = state.steps.length;
+  $stepText.textContent = 'Press next to begin';
+  $next.textContent = 'Next →';
+  $next.removeAttribute('disabled');
+
+  // reset key badges
+  document.querySelectorAll('#graph .node').forEach(g=>{
+    const dt=g.querySelector('.key-txt');
+    const dg=g.querySelector('.key-g');
+    if(dt) dt.textContent='∞';
+    if(dg) dg.classList.remove('show');
+  });
+
+  // reset tree — pre-spawn all nodes in same circular order as the main graph
+  $treeEdges.innerHTML='';
+  $treeNodes.innerHTML='';
+  computeTreePositions();
+  spawnTreeNodes();
+  $treeEmpty.style.display='none';
+  $mstCount.textContent = `0 / ${state.n} nodes`;
+  $mstTotal.innerHTML = '&mdash;';
+
+  // reset history
+  $history.innerHTML = '<div class="hitem empty"><div class="ht">no steps yet &mdash; press next to begin</div></div>';
+  $histCount.textContent = '0 steps';
+
+  applyMarks();
+}
+
+function clearGraphState(){
+  document.querySelectorAll('#graph .node').forEach(g=>g.classList.remove('in-mst','now','frontier'));
+  document.querySelectorAll('#graph .edge').forEach(e=>e.classList.remove('look','candidate','mst'));
+}
+
+function nextStep(){
+  if(state.done){
+    rebuild();
+    return;
+  }
+  if(state.idx >= state.steps.length) return;
+  const s = state.steps[state.idx];
+
+  // clear transients
+  document.querySelectorAll('#graph .node').forEach(g=>g.classList.remove('now'));
+  document.querySelectorAll('#graph .edge.look').forEach(e=>e.classList.remove('look'));
+
+  if(s.type==='start'){
+    // show the seed node's key=0 badge
+    const g=document.querySelector(`#graph .node[data-n="${state.src}"]`);
+    if(g){
+      g.querySelector('.key-g').classList.add('show');
+      g.querySelector('.key-txt').textContent='0';
+    }
+  } else if(s.type==='add'){
+    // settle prior "now"
+    document.querySelectorAll('#graph .node[data-was-now="1"]').forEach(g=>{
+      g.removeAttribute('data-was-now');
+      g.classList.add('in-mst');
+      g.classList.remove('frontier');
+    });
+    const g=document.querySelector(`#graph .node[data-n="${s.u}"]`);
+    g.classList.remove('in-mst','frontier');
+    g.classList.add('now');
+    g.setAttribute('data-was-now','1');
+    // show its key (which is the edge weight that brought it in)
+    const dg=g.querySelector('.key-g');
+    const dt=g.querySelector('.key-txt');
+    if(dt) dt.textContent = s.key[s.u];
+    if(dg) dg.classList.add('show');
+
+    // promote candidate edge to MST edge
+    if(s.edge){
+      const ek = edgeKey(s.edge.u, s.edge.v);
+      const e = document.querySelector(`#graph .edge[data-e="${ek}"]`);
+      if(e){
+        e.classList.remove('candidate','look');
+        e.classList.add('mst');
+      }
+    }
+
+    // grow the spanning tree
+    appendToTree(s);
+  } else if(s.type==='update' || s.type==='check'){
+    const ek = edgeKey(s.u, s.v);
+    const e = document.querySelector(`#graph .edge[data-e="${ek}"]`);
+    if(e) e.classList.add('look');
+    if(s.updated){
+      // mark this vertex as frontier (candidate)
+      const gv=document.querySelector(`#graph .node[data-n="${s.v}"]`);
+      if(gv && !gv.classList.contains('in-mst') && !gv.classList.contains('now')){
+        gv.classList.add('frontier');
+      }
+      // update key badge
+      const dg=gv.querySelector('.key-g');
+      const dt=gv.querySelector('.key-txt');
+      if(dt) dt.textContent = s.w;
+      if(dg) dg.classList.add('show');
+      // also update the candidate-edge display: remove old candidate from prior parent,
+      // mark new edge as candidate
+      // first clear any candidate edge ending at v
+      document.querySelectorAll(`#graph .edge[data-cand-end="${s.v}"]`).forEach(e=>{
+        e.classList.remove('candidate');
+        e.removeAttribute('data-cand-end');
+      });
+      if(e && !e.classList.contains('mst')){
+        e.setAttribute('data-cand-end', s.v);
+        // candidate styling added persistently after look fades
+        setTimeout(()=>{
+          if(e.classList.contains('look')===false && !e.classList.contains('mst')){
+            // safe to add candidate
+          }
+          if(!e.classList.contains('mst')) e.classList.add('candidate');
+        }, 0);
+      }
+    }
+  } else if(s.type==='done'){
+    // settle all
+    document.querySelectorAll('#graph .node[data-was-now="1"]').forEach(g=>{
+      g.removeAttribute('data-was-now');
+      g.classList.add('in-mst');
+      g.classList.remove('frontier');
+    });
+    // remove any leftover candidate edges
+    document.querySelectorAll('#graph .edge.candidate').forEach(e=>{
+      e.classList.remove('candidate');
+      e.removeAttribute('data-cand-end');
+    });
+    // finalize MST summary
+    $mstTotal.textContent = s.total;
+    $mstCount.textContent = `${s.visited} / ${state.n} nodes`;
+    // stop the pulsing on the last-added tree node
+    $treeNodes.querySelectorAll('.tree-node.latest').forEach(n=>n.classList.remove('latest'));
+    state.done = true;
+    $next.textContent = 'Restart ↺';
+  }
+
+  $stepText.innerHTML = s.msg;
+  state.idx++;
+  $stepNum.textContent = state.idx;
+
+  // flash now-step
+  $nowStep.classList.remove('flash');
+  void $nowStep.offsetWidth;
+  $nowStep.classList.add('flash');
+
+  // append to history list
+  appendHistory(s, state.idx);
+  applyMarks();
+}
+
+/* circular positions inside the 480×400 tree viewBox — same order as main graph */
+function computeTreePositions(){
+  treePos = {};
+  const cx=240, cy=200, r=145;
+  for(let i=0;i<state.n;i++){
+    const a=(i/state.n)*Math.PI*2 - Math.PI/2;
+    treePos[i] = {x: cx + Math.cos(a)*r, y: cy + Math.sin(a)*r};
+  }
+}
+
+/* spawn every node up-front (outlined / not in MST yet) */
+function spawnTreeNodes(){
+  for(let i=0;i<state.n;i++){
+    const p = treePos[i];
+    const g = svgEl('g',{
+      class:'tree-node pop',
+      transform:`translate(${p.x},${p.y})`,
+      'data-tn':i,
+      style:`animation-delay:${i*55}ms`,
+    });
+    g.appendChild(svgEl('circle',{r:30,class:'halo'}));
+    g.appendChild(svgEl('circle',{r:22,class:'tree-body'}));
+    const lbl = svgEl('text',{class:'tree-lbl',x:0,y:0});
+    lbl.textContent = LETTERS[i];
+    g.appendChild(lbl);
+    $treeNodes.appendChild(g);
+  }
+}
+
+/* one Prim step → light up the node, draw its incoming MST edge */
+function appendToTree(s){
+  const u = s.u;
+  const g = $treeNodes.querySelector(`.tree-node[data-tn="${u}"]`);
+  if(!g) return;
+
+  // unmark previous latest
+  $treeNodes.querySelectorAll('.tree-node.latest').forEach(n=>n.classList.remove('latest'));
+
+  const isSeed = s.edge === null;
+  g.classList.add(isSeed ? 'seed' : 'in-mst');
+  g.classList.add('latest');
+
+  // draw incoming MST edge
+  if(s.edge){
+    const pp = treePos[s.edge.u];
+    const cp = treePos[s.edge.v];
+    if(pp && cp){
+      const line = svgEl('line',{
+        x1:pp.x, y1:pp.y, x2:cp.x, y2:cp.y,
+        class:'tree-edge drawn',
+      });
+      // insert edge BEFORE the nodes layer reference — we append to $treeEdges which is below nodes
+      $treeEdges.appendChild(line);
+
+      const mx=(pp.x+cp.x)/2, my=(pp.y+cp.y)/2;
+      const wbg = svgEl('rect',{x:mx-12, y:my-9, width:24, height:18, rx:9, class:'tree-weight-bg appearing'});
+      const wt  = svgEl('text',{x:mx, y:my, class:'tree-weight appearing'});
+      wt.textContent = s.edge.w;
+      $treeEdges.appendChild(wbg);
+      $treeEdges.appendChild(wt);
+    }
+  }
+
+  // running totals
+  const runningTotal = s.edges.reduce((sum,e)=>sum+e.w,0);
+  $mstTotal.textContent = runningTotal;
+  const inMstCount = s.inMST.filter(x=>x).length;
+  $mstCount.textContent = `${inMstCount} / ${state.n} nodes`;
+}
+
+function appendHistory(s, n){
+  const empty = $history.querySelector('.empty');
+  if(empty) empty.remove();
+  const prev = $history.querySelector('.hitem.latest');
+  if(prev) prev.classList.remove('latest');
+
+  let kindLabel = s.type;
+  let kindClass = s.type;
+  if(s.type==='start')       kindLabel='Start';
+  else if(s.type==='add')    kindLabel='Add';
+  else if(s.type==='update'){kindLabel='Update';kindClass='update'}
+  else if(s.type==='check') {kindLabel='Check'; kindClass='check'}
+  else if(s.type==='done')   kindLabel='Done';
+
+  const item = el('div',{class:'hitem latest '+kindClass});
+  item.appendChild(el('div',{class:'hn'}, String(n).padStart(2,'0')));
+  item.appendChild(el('div',{class:'kind'}, kindLabel));
+  const ht = el('div',{class:'ht'});
+  ht.innerHTML = s.msg;
+  item.appendChild(ht);
+  $history.appendChild(item);
+  $history.scrollTop = $history.scrollHeight;
+
+  $histCount.textContent = `${n} step${n===1?'':'s'}`;
+}
+
+function edgeKey(i,j){return i<j?`${i}-${j}`:`${j}-${i}`}
+
+$size.addEventListener('input',e=>{
+  const n=+e.target.value;
+  $sizeOut.textContent=n;
+  initMatrix(n);
+});
+$next.addEventListener('click',nextStep);
+document.getElementById('reset').addEventListener('click',rebuild);
+document.getElementById('shuffle').addEventListener('click',()=>{
+  const n=state.n;
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+    const r=Math.random();
+    const v=r<0.4?0:Math.floor(Math.random()*9)+1;
+    state.matrix[i][j]=v;state.matrix[j][i]=v;
+  }
+  for(let i=0;i<n;i++){
+    if(!state.matrix[i].some(x=>x>0)){
+      const j=(i+1)%n;
+      const v=Math.floor(Math.random()*9)+1;
+      state.matrix[i][j]=v;state.matrix[j][i]=v;
+    }
+  }
+  renderMatrix();renderEdges();rebuild();
+});
+
+initMatrix(5);
+</script>
+</body>
+</html>

@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Path Finder</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f4f0e6;
+    --bg-soft:#ece7d8;
+    --ink:#1c1c1c;
+    --ink-2:#6b6862;
+    --ink-3:#a39e90;
+    --line:#dcd6c5;
+    --line-2:#c4bda9;
+    --accent:#c8553d;
+    --accent-soft:#f1dfd6;
+  }
+  *{box-sizing:border-box}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Outfit',system-ui,sans-serif;font-weight:400}
+  body{min-height:100vh}
+  .serif{font-family:'Fraunces',serif;letter-spacing:-0.015em}
+  .it{font-style:italic}
+
+  .card{background:#fdfbf5;border:1px solid var(--line);border-radius:14px}
+  .label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);font-weight:500}
+  .hr{height:1px;background:var(--line);width:100%}
+
+  /* matrix */
+  .matrix{display:grid;gap:4px}
+  .mcell input{
+    width:100%;height:36px;background:#fff;border:1px solid var(--line);border-radius:8px;
+    color:var(--ink);text-align:center;font-family:'Outfit',sans-serif;font-size:14px;font-weight:500;
+    transition:border-color .2s,box-shadow .2s;outline:none;
+  }
+  .mcell input:hover{border-color:var(--line-2)}
+  .mcell input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .mcell.diag input{background:var(--bg-soft);color:var(--ink-3)}
+  .mhead{
+    display:flex;align-items:center;justify-content:center;height:36px;
+    font-family:'Fraunces',serif;font-weight:500;font-size:15px;color:var(--ink-2);
+  }
+
+  /* buttons */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:11px 18px;border-radius:10px;
+    font-family:'Outfit',sans-serif;font-weight:500;font-size:14px;
+    cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);
+    transition:all .2s ease;
+  }
+  .btn:hover{border-color:var(--ink);background:var(--bg-soft)}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--ink);color:#fdfbf5;border-color:var(--ink)}
+  .btn-primary:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .btn[disabled]:hover{background:#fff;border-color:var(--line);color:var(--ink)}
+
+  /* chips */
+  .picker{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:8px;
+    background:#fff;border:1px solid var(--line);
+    font-family:'Fraunces',serif;font-weight:500;font-size:16px;color:var(--ink);
+    cursor:pointer;transition:all .2s ease;
+  }
+  .chip:hover{border-color:var(--ink)}
+  .chip.on{background:var(--ink);color:#fdfbf5;border-color:var(--ink)}
+
+  /* slider */
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;background:transparent;height:18px}
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line-2);border-radius:2px}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--accent);margin-top:-6px;cursor:pointer;border:2px solid #fdfbf5;
+  }
+  input[type=range]::-moz-range-track{height:2px;background:var(--line-2);border-radius:2px}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid #fdfbf5;cursor:pointer}
+
+  /* graph */
+  .edge{stroke:var(--line-2);stroke-width:1.5;transition:stroke .4s,stroke-width .4s,opacity .3s}
+  .edge.look{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 4;animation:dash 1s linear infinite}
+  .edge.tree{stroke:var(--ink);stroke-width:2.2}
+  @keyframes dash{to{stroke-dashoffset:-18}}
+
+  .node circle.body{
+    fill:#fdfbf5;stroke:var(--line-2);stroke-width:1.5;
+    transition:fill .35s,stroke .35s,stroke-width .35s;
+  }
+  .node.src circle.body{stroke:var(--ink);stroke-width:2}
+  .node.seen circle.body{fill:var(--ink);stroke:var(--ink)}
+  .node.now circle.body{fill:var(--accent);stroke:var(--accent);stroke-width:2}
+
+  .node .lbl{
+    font-family:'Fraunces',serif;font-weight:500;font-size:18px;fill:var(--ink);
+    text-anchor:middle;dominant-baseline:central;transition:fill .35s ease;
+    pointer-events:none;
+  }
+  .node.seen .lbl,.node.now .lbl{fill:#fdfbf5}
+
+  /* distance badge under each node */
+  .node .dist-g{opacity:0;transition:opacity .35s ease}
+  .node .dist-g.show{opacity:1}
+  .node .dist-bg{fill:#fdfbf5;stroke:var(--line);stroke-width:1}
+  .node .dist-txt{
+    font-family:'Outfit',sans-serif;font-weight:600;font-size:11px;fill:var(--ink);
+    text-anchor:middle;dominant-baseline:central;
+  }
+  .node.seen .dist-bg, .node.now .dist-bg{fill:var(--ink);stroke:var(--ink)}
+  .node.seen .dist-txt, .node.now .dist-txt{fill:#fdfbf5}
+
+  .weight{
+    font-family:'Outfit',sans-serif;font-weight:500;font-size:12px;fill:var(--ink-2);
+    text-anchor:middle;dominant-baseline:central;
+  }
+  .weight-bg{fill:#fdfbf5;stroke:var(--line);stroke-width:1}
+
+  /* node pop-in */
+  .node{transform-origin:center;transform-box:fill-box}
+  .pop{animation:pop .45s cubic-bezier(.34,1.4,.5,1) backwards}
+  @keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+
+  /* status */
+  .status{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:7px 14px;border-radius:999px;
+    background:#fdfbf5;border:1px solid var(--line);
+    font-size:13px;color:var(--ink-2);
+  }
+  .status .num{font-family:'Fraunces',serif;color:var(--ink);font-weight:500}
+
+  /* distance table */
+  .dtable{background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;gap:1px}
+  .drow{background:#fdfbf5;padding:10px 14px;transition:background .3s ease,opacity .3s ease;display:flex;flex-direction:column;gap:3px}
+  .drow.header{background:var(--bg-soft);padding:8px 14px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);font-weight:500;flex-direction:row;justify-content:space-between;align-items:center}
+  .drow .top{display:flex;align-items:center;gap:10px}
+  .drow .dot{width:8px;height:8px;border-radius:50%;background:transparent;border:1.5px solid var(--ink-3);flex-shrink:0;transition:all .3s ease}
+  .drow.tentative .dot{background:var(--accent-soft);border-color:var(--accent)}
+  .drow.settled .dot{background:var(--ink);border-color:var(--ink)}
+  .drow.current{background:var(--accent-soft)}
+  .drow.unreached{opacity:.55}
+  .drow .to{font-family:'Fraunces',serif;font-weight:500;font-size:16px;color:var(--ink);flex:1}
+  .drow .to .tag{font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:500;margin-left:6px}
+  .drow .dist{font-family:'Fraunces',serif;font-weight:500;font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .drow.settled .dist{color:var(--accent)}
+  .drow.unreached .dist{color:var(--ink-3)}
+  .drow .path{font-family:'Fraunces',serif;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums;padding-left:18px;line-height:1.45}
+  .drow .path .arr{color:var(--ink-3);margin:0 4px;font-size:11px;font-family:'Outfit',sans-serif}
+  .drow .path .it{font-style:italic;color:var(--ink-3);font-size:12px;font-family:'Outfit',sans-serif}
+
+  /* current-step highlight under graph */
+  .now-step{
+    margin-top:14px;border-radius:10px;
+    background:var(--bg-soft);
+    border:1px solid var(--line);
+    border-left:3px solid var(--accent);
+    padding:14px 18px;
+    transition:background .4s ease;
+  }
+  .now-step .ns-tag{
+    font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent);font-weight:500;margin-bottom:6px;
+    font-family:'Outfit',sans-serif;
+  }
+  .now-step .ns-text{
+    font-family:'Fraunces',serif;font-size:17px;color:var(--ink);
+    line-height:1.4;letter-spacing:-0.005em;
+  }
+  .now-step.flash{animation:flash .65s ease}
+  @keyframes flash{
+    0%  {background:var(--accent-soft)}
+    100%{background:var(--bg-soft)}
+  }
+
+  /* step history list */
+  .history-box{
+    border:1px solid var(--line);border-radius:10px;
+    background:#fff;
+    overflow-y:auto;
+    display:block;
+    height:420px;
+  }
+  .history-box::-webkit-scrollbar{width:6px}
+  .history-box::-webkit-scrollbar-track{background:transparent}
+  .history-box::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+  .hitem{
+    display:grid;grid-template-columns:26px 1fr;gap:10px;
+    padding:9px 12px;border-bottom:1px dashed var(--line);
+    font-size:12.5px;line-height:1.5;
+    animation:hin .35s ease;
+  }
+  .hitem:last-child{border-bottom:none}
+  .hitem .hn{
+    font-family:'Outfit',sans-serif;font-weight:500;font-size:10px;
+    color:var(--ink-3);letter-spacing:.06em;padding-top:3px;
+    font-variant-numeric:tabular-nums;
+  }
+  .hitem .ht{color:var(--ink)}
+  .hitem .kind{
+    display:inline-block;font-size:9px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-3);font-weight:600;margin-right:6px;
+    font-family:'Outfit',sans-serif;
+  }
+  .hitem.start .kind{color:var(--ink-2)}
+  .hitem.visit .kind{color:var(--accent)}
+  .hitem.update .kind{color:var(--accent)}
+  .hitem.check .kind{color:var(--ink-3)}
+  .hitem.done .kind{color:var(--ink)}
+  .hitem.latest{background:var(--accent-soft)}
+  .hitem.empty{grid-template-columns:1fr;text-align:center;padding:18px 12px;color:var(--ink-3);font-style:italic}
+  @keyframes hin{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+
+  /* reveal */
+  .reveal{opacity:0;animation:rev .7s ease forwards}
+  @keyframes rev{to{opacity:1}}
+  .d1{animation-delay:.05s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}
+
+  /* nav */
+  .nav-link{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 12px;border-radius:8px;
+    font-size:12px;color:var(--ink-2);
+    border:1px solid var(--line);background:#fdfbf5;
+    transition:all .2s ease;text-decoration:none;
+  }
+  .nav-link:hover{border-color:var(--ink);color:var(--ink)}
+  .nav-link.active{background:var(--ink);color:#fdfbf5;border-color:var(--ink)}
+
+  /* prevent any accidental horizontal scroll */
+  html,body{overflow-x:hidden}
+  .now-step .ns-text,
+  .hitem .ht,
+  .drow .path{overflow-wrap:anywhere;word-break:break-word}
+
+  /* tablet */
+  @media (max-width:900px){
+    .history-box{height:300px}
+  }
+  /* mobile */
+  @media (max-width:640px){
+    .mcell input,.mhead{height:32px;font-size:13px;min-width:0}
+    .matrix{gap:3px}
+    .chip{width:32px;height:32px;font-size:14px}
+    .btn{padding:9px 14px;font-size:13px}
+    .status{padding:6px 12px;font-size:12px}
+    .now-step{padding:12px 14px;margin-top:12px}
+    .now-step .ns-text{font-size:15px;line-height:1.45}
+    .now-step .ns-tag{font-size:9px;margin-bottom:4px}
+    .history-box{height:280px}
+    .hitem{grid-template-columns:24px 1fr;gap:8px;padding:8px 11px;font-size:12px}
+    .drow{padding:9px 12px}
+    .drow .to{font-size:15px}
+    .drow .dist{font-size:15px}
+    .drow .path{font-size:12.5px;padding-left:16px}
+    .label{font-size:10px}
+    main{padding-left:14px!important;padding-right:14px!important}
+  }
+</style>
+</head>
+<body>
+
+<main class="max-w-7xl mx-auto px-5 py-12 md:py-16">
+
+  <header class="mb-8 reveal d1">
+    <div class="flex items-center justify-between mb-3 gap-3 flex-wrap">
+      <div class="label">Algorithm · 001</div>
+      <div class="flex items-center gap-2">
+        <a href="djkstra.html" class="nav-link active">Dijkstra</a>
+        <a href="prims.html" class="nav-link">Prim&rsquo;s</a>
+      </div>
+    </div>
+    <h1 class="serif text-[clamp(40px,7vw,76px)] leading-[0.95]">
+      <span class="it text-[var(--accent)]">Djikstra</span><span class="text-[var(--accent)]">.</span>
+    </h1>
+    <p class="mt-3 text-[15px] text-[var(--ink-2)] max-w-md">
+      Step through Dijkstra&rsquo;s algorithm. Pick a start node &mdash; the shortest distance to every other node will be discovered one step at a time.
+    </p>
+  </header>
+
+  <!-- ROW 1 · inputs -->
+  <section class="card p-6 mb-6 reveal d2">
+    <div class="grid md:grid-cols-12 gap-6 items-start">
+
+      <div class="md:col-span-3">
+        <div class="label mb-3">Nodes</div>
+        <div class="flex items-center gap-4">
+          <input id="size" type="range" min="3" max="7" value="5" />
+          <span id="size-out" class="serif text-2xl w-6 text-right">5</span>
+        </div>
+        <p class="text-[12px] text-[var(--ink-3)] mt-4 leading-relaxed">
+          Drag the slider to change how many nodes are in the graph.
+        </p>
+      </div>
+
+      <div class="md:col-span-3 md:border-l md:border-[var(--line)] md:pl-6">
+        <div class="label mb-3">Start node</div>
+        <div class="picker" id="src-picker"></div>
+        <p class="text-[12px] text-[var(--ink-3)] mt-4 leading-relaxed">
+          The algorithm will find shortest paths <em class="serif it">from</em> this node to all others.
+        </p>
+      </div>
+
+      <div class="md:col-span-6 md:border-l md:border-[var(--line)] md:pl-6">
+        <div class="flex items-center justify-between mb-3">
+          <div class="label">Adjacency matrix</div>
+          <button id="shuffle" class="btn !py-1.5 !px-3 !text-[12px]">Shuffle</button>
+        </div>
+        <div id="matrix" class="matrix"></div>
+        <p class="text-[12px] text-[var(--ink-3)] mt-3 leading-relaxed">
+          Each cell is the edge weight between two nodes. <span class="it">0</span> means no edge.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROW 2 · graph · history · distances -->
+  <div class="grid md:grid-cols-12 gap-6">
+
+    <!-- GRAPH -->
+    <section class="md:col-span-5 reveal d3">
+      <div class="card p-5 h-full flex flex-col">
+
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <span class="status">
+            <span>Step <span id="step-num" class="num">0</span> / <span id="step-total" class="num">0</span></span>
+          </span>
+          <div class="flex items-center gap-2">
+            <button id="reset" class="btn">Reset</button>
+            <button id="next" class="btn btn-primary">Next →</button>
+          </div>
+        </div>
+
+        <div class="relative">
+          <svg id="graph" viewBox="0 0 600 460" class="w-full h-auto" style="aspect-ratio:600/460">
+            <g id="edges"></g>
+            <g id="nodes"></g>
+          </svg>
+        </div>
+
+        <div id="now-step" class="now-step">
+          <div class="ns-tag">Now</div>
+          <div class="ns-text" id="step-text">Press next to begin</div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-[var(--ink-2)]">
+          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full border border-[var(--ink)]"></span>start</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full" style="background:var(--accent)"></span>current</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full" style="background:var(--ink)"></span>settled</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-4 h-[2px]" style="background:var(--ink)"></span>SPT edge</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="md:col-span-3 reveal d3" style="animation-delay:.4s">
+      <div class="card px-5 pt-5 pb-2 h-full flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <div class="label">Step history</div>
+          <span class="text-[11px] text-[var(--ink-3)]" id="hist-count">0 steps</span>
+        </div>
+        <div id="history" class="history-box">
+          <div class="hitem empty"><div class="ht">no steps yet &mdash; press next to begin</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DISTANCE TABLE -->
+    <section class="md:col-span-4 reveal d3" style="animation-delay:.5s">
+      <div class="card p-5 h-full flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <div class="label">Distance from start</div>
+          <span class="text-[11px] text-[var(--ink-3)]">live</span>
+        </div>
+        <div id="dtable" class="dtable"></div>
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<script>
+const LETTERS=['A','B','C','D','E','F','G','H'];
+const SAMPLE=[
+  [0,3,0,7,0,0,0],
+  [3,0,2,0,6,0,0],
+  [0,2,0,4,5,0,0],
+  [7,0,4,0,0,3,0],
+  [0,6,5,0,0,2,4],
+  [0,0,0,3,2,0,3],
+  [0,0,0,0,4,3,0],
+];
+
+const state={
+  n:5,
+  matrix:[],
+  src:0,
+  steps:[],
+  idx:0,
+  done:false,
+};
+
+const $matrix=document.getElementById('matrix');
+const $size=document.getElementById('size');
+const $sizeOut=document.getElementById('size-out');
+const $srcPicker=document.getElementById('src-picker');
+const $edges=document.getElementById('edges');
+const $nodes=document.getElementById('nodes');
+const $stepText=document.getElementById('step-text');
+const $stepNum=document.getElementById('step-num');
+const $stepTotal=document.getElementById('step-total');
+const $next=document.getElementById('next');
+const $dtable=document.getElementById('dtable');
+const $nowStep=document.getElementById('now-step');
+const $history=document.getElementById('history');
+const $histCount=document.getElementById('hist-count');
+
+function el(tag,attrs={},text){
+  const e=document.createElement(tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  if(text!==undefined) e.textContent=text;
+  return e;
+}
+function svgEl(tag,attrs={}){
+  const e=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  return e;
+}
+
+function initMatrix(n){
+  state.n=n;
+  state.matrix=[];
+  for(let i=0;i<n;i++){
+    const row=[];
+    for(let j=0;j<n;j++){
+      row.push(i===j?0:(SAMPLE[i]&&SAMPLE[i][j])||0);
+    }
+    state.matrix.push(row);
+  }
+  if(state.src>=n) state.src=0;
+  renderMatrix();
+  renderPickers();
+  layout();
+  renderGraph();
+  rebuild();
+}
+
+function renderMatrix(){
+  const n=state.n;
+  $matrix.style.gridTemplateColumns=`28px repeat(${n},1fr)`;
+  $matrix.innerHTML='';
+  $matrix.appendChild(el('div',{class:'mhead'},''));
+  for(let j=0;j<n;j++) $matrix.appendChild(el('div',{class:'mhead'},LETTERS[j]));
+  for(let i=0;i<n;i++){
+    $matrix.appendChild(el('div',{class:'mhead'},LETTERS[i]));
+    for(let j=0;j<n;j++){
+      const wrap=el('div',{class:'mcell'+(i===j?' diag':'')});
+      const input=el('input',{type:'text',value:state.matrix[i][j]||'',placeholder:i===j?'·':'0','data-i':i,'data-j':j});
+      if(i===j) input.disabled=true;
+      input.addEventListener('input',e=>{
+        let v=parseInt(e.target.value,10);
+        if(isNaN(v)||v<0) v=0;
+        const ii=+e.target.dataset.i,jj=+e.target.dataset.j;
+        state.matrix[ii][jj]=v;
+        state.matrix[jj][ii]=v;
+        const p=$matrix.querySelector(`input[data-i="${jj}"][data-j="${ii}"]`);
+        if(p && document.activeElement!==p) p.value=v||'';
+        renderEdges();
+        rebuild();
+      });
+      wrap.appendChild(input);
+      $matrix.appendChild(wrap);
+    }
+  }
+}
+
+function renderPickers(){
+  $srcPicker.innerHTML='';
+  for(let i=0;i<state.n;i++){
+    const a=el('div',{class:'chip'+(i===state.src?' on':'')},LETTERS[i]);
+    a.addEventListener('click',()=>{
+      state.src=i;
+      renderPickers();applyMarks();rebuild();
+    });
+    $srcPicker.appendChild(a);
+  }
+}
+
+let pos=[];
+function layout(){
+  const cx=300,cy=230,r=170;
+  pos=[];
+  for(let i=0;i<state.n;i++){
+    const a=(i/state.n)*Math.PI*2-Math.PI/2;
+    pos.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r});
+  }
+}
+
+function renderGraph(){
+  renderEdges();
+  renderNodes();
+  applyMarks();
+}
+
+function renderEdges(){
+  $edges.innerHTML='';
+  for(let i=0;i<state.n;i++){
+    for(let j=i+1;j<state.n;j++){
+      const w=state.matrix[i][j];
+      if(w>0){
+        const a=pos[i],b=pos[j];
+        $edges.appendChild(svgEl('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:'edge','data-e':`${i}-${j}`}));
+        const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+        $edges.appendChild(svgEl('circle',{cx:mx,cy:my,r:12,class:'weight-bg'}));
+        const t=svgEl('text',{x:mx,y:my,class:'weight'});
+        t.textContent=w;
+        $edges.appendChild(t);
+      }
+    }
+  }
+}
+
+function renderNodes(){
+  $nodes.innerHTML='';
+  for(let i=0;i<state.n;i++){
+    const p=pos[i];
+    const dx=p.x-300, dy=p.y-230, dl=Math.hypot(dx,dy)||1;
+    const ox=(dx/dl)*38, oy=(dy/dl)*38;
+
+    const g=svgEl('g',{class:'node pop','data-n':i,transform:`translate(${p.x},${p.y})`,style:`animation-delay:${i*50}ms`});
+    g.appendChild(svgEl('circle',{r:24,class:'body'}));
+    const lbl=svgEl('text',{class:'lbl'});
+    lbl.textContent=LETTERS[i];
+    g.appendChild(lbl);
+
+    const dg=svgEl('g',{class:'dist-g',transform:`translate(${ox},${oy})`});
+    dg.appendChild(svgEl('rect',{x:-15,y:-9,width:30,height:18,rx:9,class:'dist-bg'}));
+    const dt=svgEl('text',{x:0,y:0,class:'dist-txt'});
+    dt.textContent='∞';
+    dg.appendChild(dt);
+    g.appendChild(dg);
+
+    $nodes.appendChild(g);
+  }
+}
+
+function applyMarks(){
+  document.querySelectorAll('#graph .node').forEach(g=>{
+    const id=+g.dataset.n;
+    const isPlain = !g.classList.contains('seen') && !g.classList.contains('now');
+    g.classList.toggle('src', id===state.src && isPlain);
+  });
+}
+
+/* dijkstra — to all nodes */
+function dijkstra(){
+  const n=state.n,m=state.matrix;
+  const d=Array(n).fill(Infinity),p=Array(n).fill(null),v=Array(n).fill(false);
+  d[state.src]=0;
+  const steps=[];
+  steps.push({type:'start',u:state.src,d:[...d],p:[...p],v:[...v],msg:`Start at ${LETTERS[state.src]}. Distance to ${LETTERS[state.src]} is 0; every other node is ∞.`});
+
+  for(let i=0;i<n;i++){
+    let u=-1,best=Infinity;
+    for(let k=0;k<n;k++) if(!v[k]&&d[k]<best){best=d[k];u=k}
+    if(u<0||best===Infinity) break;
+    v[u]=true;
+    steps.push({type:'visit',u,d:[...d],p:[...p],v:[...v],msg:`Visit ${LETTERS[u]} — its distance ${d[u]} is now final.`});
+
+    for(let w=0;w<n;w++){
+      if(m[u][w]>0 && !v[w]){
+        const nd=d[u]+m[u][w];
+        if(nd<d[w]){
+          const old=d[w];
+          d[w]=nd;p[w]=u;
+          steps.push({type:'look',u,w,nd,d:[...d],p:[...p],v:[...v],updated:true,msg:`Through ${LETTERS[u]}, ${LETTERS[w]} can be reached in ${nd} (was ${old===Infinity?'∞':old}).`});
+        } else {
+          steps.push({type:'look',u,w,nd,d:[...d],p:[...p],v:[...v],updated:false,msg:`Through ${LETTERS[u]}, ${LETTERS[w]} would be ${nd} — keep ${d[w]}.`});
+        }
+      }
+    }
+  }
+  steps.push({type:'done',d:[...d],p:[...p],v:[...v],msg:`All reachable nodes settled.`});
+  return steps;
+}
+
+function rebuild(){
+  state.steps = dijkstra();
+  state.idx = 0;
+  state.done = false;
+  clearGraphState();
+  $stepNum.textContent = '0';
+  $stepTotal.textContent = state.steps.length;
+  $stepText.textContent = 'Press next to begin';
+  $next.textContent = 'Next →';
+  $next.removeAttribute('disabled');
+  // clear history
+  $history.innerHTML = '<div class="hitem empty"><div class="ht">no steps yet &mdash; press next to begin</div></div>';
+  if($histCount) $histCount.textContent = '0 steps';
+  // initial table — all infinity except source = 0
+  const init={d:Array(state.n).fill(Infinity),p:Array(state.n).fill(null),v:Array(state.n).fill(false)};
+  init.d[state.src]=0;
+  renderTable(init,null);
+  // reset distance badges
+  document.querySelectorAll('#graph .node').forEach(g=>{
+    const dg=g.querySelector('.dist-g');
+    const dt=g.querySelector('.dist-txt');
+    if(dt) dt.textContent='∞';
+    if(dg) dg.classList.remove('show');
+  });
+  applyMarks();
+}
+
+function clearGraphState(){
+  document.querySelectorAll('#graph .node').forEach(g=>g.classList.remove('seen','now'));
+  document.querySelectorAll('#graph .edge').forEach(e=>e.classList.remove('look','tree'));
+}
+
+function nextStep(){
+  if(state.done){
+    rebuild();
+    return;
+  }
+  if(state.idx >= state.steps.length) return;
+  const s = state.steps[state.idx];
+
+  // clear transient highlights from previous step
+  document.querySelectorAll('#graph .node').forEach(g=>g.classList.remove('now'));
+  document.querySelectorAll('#graph .edge.look').forEach(e=>e.classList.remove('look'));
+
+  if(s.type==='start'){
+    // show source distance badge
+    const g=document.querySelector(`#graph .node[data-n="${s.u}"]`);
+    if(g){
+      g.querySelector('.dist-g').classList.add('show');
+      g.querySelector('.dist-txt').textContent='0';
+    }
+  } else if(s.type==='visit'){
+    // settle previously-current node
+    document.querySelectorAll('#graph .node[data-was-now="1"]').forEach(g=>{
+      g.removeAttribute('data-was-now');
+      g.classList.add('seen');
+    });
+    const g=document.querySelector(`#graph .node[data-n="${s.u}"]`);
+    g.classList.remove('seen');
+    g.classList.add('now');
+    g.setAttribute('data-was-now','1');
+    // show its distance badge
+    const dg=g.querySelector('.dist-g');
+    const dt=g.querySelector('.dist-txt');
+    if(dt) dt.textContent=s.d[s.u];
+    if(dg) dg.classList.add('show');
+  } else if(s.type==='look'){
+    const ek = edgeKey(s.u, s.w);
+    const e = document.querySelector(`#graph .edge[data-e="${ek}"]`);
+    if(e) e.classList.add('look');
+    if(s.updated){
+      const gw=document.querySelector(`#graph .node[data-n="${s.w}"]`);
+      if(gw){
+        gw.querySelector('.dist-g').classList.add('show');
+        gw.querySelector('.dist-txt').textContent=s.nd;
+      }
+    }
+  } else if(s.type==='done'){
+    // settle all
+    document.querySelectorAll('#graph .node[data-was-now="1"]').forEach(g=>{
+      g.removeAttribute('data-was-now');
+      g.classList.add('seen');
+    });
+    // reveal shortest-path tree
+    for(let i=0;i<state.n;i++){
+      const pr=s.p[i];
+      if(pr!==null){
+        const e=document.querySelector(`#graph .edge[data-e="${edgeKey(pr,i)}"]`);
+        if(e){
+          setTimeout(()=>e.classList.add('tree'), i*100);
+        }
+      }
+    }
+    state.done = true;
+    $next.textContent = 'Restart ↺';
+  }
+
+  $stepText.textContent = s.msg;
+  state.idx++;
+  $stepNum.textContent = state.idx;
+
+  // flash the current-step highlight
+  $nowStep.classList.remove('flash');
+  void $nowStep.offsetWidth;
+  $nowStep.classList.add('flash');
+
+  // append to history list
+  appendHistory(s, state.idx);
+
+  renderTable(s, s);
+  applyMarks();
+}
+
+function renderTable(s, lastStep){
+  $dtable.innerHTML='';
+
+  // header
+  const header = el('div',{class:'drow header'});
+  header.appendChild(el('div',{},'Node · path'));
+  header.appendChild(el('div',{},'d'));
+  $dtable.appendChild(header);
+
+  for(let i=0;i<state.n;i++){
+    const isSource   = i===state.src;
+    const isSettled  = s.v && s.v[i];
+    const isReached  = s.d[i] < Infinity;
+    const isTent     = isReached && !isSettled && !isSource;
+    const isUnreach  = !isReached;
+
+    let isCurrent = false;
+    if(lastStep){
+      if(lastStep.type==='visit' && lastStep.u===i) isCurrent = true;
+      if(lastStep.type==='look'  && lastStep.w===i && lastStep.updated) isCurrent = true;
+    }
+
+    const cls = ['drow'];
+    if(isSource || isSettled) cls.push('settled');
+    else if(isTent)           cls.push('tentative');
+    else if(isUnreach)        cls.push('unreached');
+    if(isCurrent)             cls.push('current');
+
+    const row = el('div',{class:cls.join(' ')});
+
+    // top line: dot · letter · distance
+    const top = el('div',{class:'top'});
+    top.appendChild(el('div',{class:'dot'}));
+    const toCell = el('div',{class:'to'});
+    toCell.textContent = LETTERS[i];
+    if(isSource) toCell.appendChild(el('span',{class:'tag'},'start'));
+    top.appendChild(toCell);
+    top.appendChild(el('div',{class:'dist'}, isReached ? String(s.d[i]) : '∞'));
+    row.appendChild(top);
+
+    // bottom line: path trail
+    const pathCell = el('div',{class:'path'});
+    if(isSource){
+      pathCell.appendChild(el('span',{class:'it'},'starting point'));
+    } else if(isUnreach){
+      pathCell.appendChild(el('span',{class:'it'},'no path yet'));
+    } else {
+      const trail = [];
+      let c = i, safety = state.n+1;
+      while(c!==null && safety-->0){trail.push(c); c = s.p[c]}
+      trail.reverse();
+      trail.forEach((nid, idx)=>{
+        pathCell.appendChild(el('span',{},LETTERS[nid]));
+        if(idx<trail.length-1) pathCell.appendChild(el('span',{class:'arr'},'→'));
+      });
+    }
+    row.appendChild(pathCell);
+
+    $dtable.appendChild(row);
+  }
+}
+
+function appendHistory(s, n){
+  const empty = $history.querySelector('.empty');
+  if(empty) empty.remove();
+  // mark previous latest as un-latest
+  const prev = $history.querySelector('.hitem.latest');
+  if(prev) prev.classList.remove('latest');
+
+  let kindLabel = s.type;
+  let kindClass = s.type;
+  if(s.type==='start')  kindLabel='Start';
+  else if(s.type==='visit') kindLabel='Visit';
+  else if(s.type==='look'){
+    if(s.updated){kindLabel='Update';kindClass='update'}
+    else         {kindLabel='Check'; kindClass='check'}
+  }
+  else if(s.type==='done') kindLabel='Done';
+
+  const item = el('div',{class:'hitem latest '+kindClass});
+  item.appendChild(el('div',{class:'hn'}, String(n).padStart(2,'0')));
+  const ht = el('div',{class:'ht'});
+  ht.appendChild(el('span',{class:'kind'}, kindLabel));
+  ht.appendChild(document.createTextNode(s.msg));
+  item.appendChild(ht);
+  $history.appendChild(item);
+
+  // auto-scroll to the latest
+  $history.scrollTop = $history.scrollHeight;
+
+  if($histCount) $histCount.textContent = `${n} step${n===1?'':'s'}`;
+}
+
+function edgeKey(i,j){return i<j?`${i}-${j}`:`${j}-${i}`}
+
+$size.addEventListener('input',e=>{
+  const n=+e.target.value;
+  $sizeOut.textContent=n;
+  initMatrix(n);
+});
+$next.addEventListener('click',nextStep);
+document.getElementById('reset').addEventListener('click',rebuild);
+document.getElementById('shuffle').addEventListener('click',()=>{
+  const n=state.n;
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+    const r=Math.random();
+    const v=r<0.4?0:Math.floor(Math.random()*9)+1;
+    state.matrix[i][j]=v;state.matrix[j][i]=v;
+  }
+  for(let i=0;i<n;i++){
+    if(!state.matrix[i].some(x=>x>0)){
+      const j=(i+1)%n;
+      const v=Math.floor(Math.random()*9)+1;
+      state.matrix[i][j]=v;state.matrix[j][i]=v;
+    }
+  }
+  renderMatrix();renderEdges();rebuild();
+});
+
+initMatrix(5);
+</script>
+</body>
+</html>
