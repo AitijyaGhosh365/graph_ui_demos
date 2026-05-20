@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Graph Algorithms</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;1,400&family=Outfit:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f4f0e6;--ink:#1c1c1c;--ink-2:#6b6862;--ink-3:#a39e90;
+    --line:#dcd6c5;--accent:#c8553d;
+  }
+  *{box-sizing:border-box}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Outfit',sans-serif;min-height:100vh}
+  .serif{font-family:'Fraunces',serif;letter-spacing:-0.015em}
+
+  .pick{
+    display:flex;flex-direction:column;gap:6px;
+    padding:24px 26px;
+    background:#fdfbf5;border:1px solid var(--line);border-radius:14px;
+    text-decoration:none;color:inherit;
+    transition:all .25s ease;
+  }
+  .pick:hover{border-color:var(--ink);transform:translateY(-2px)}
+  .pick .num{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+  .pick .ttl{font-family:'Fraunces',serif;font-size:30px;line-height:1;margin-top:4px}
+  .pick .ttl .d{color:var(--accent)}
+  .pick .sub{font-style:italic;font-family:'Fraunces',serif;color:var(--ink-2);font-size:14px;margin-top:2px}
+  .pick .go{margin-top:10px;font-size:12px;color:var(--ink);letter-spacing:.04em}
+  .pick:hover .go .a{margin-left:8px}
+  .pick .go .a{margin-left:4px;transition:margin-left .25s ease}
+</style>
+</head>
+<body>
+<main class="max-w-3xl mx-auto px-5 py-16 md:py-24">
+  <div class="text-[11px] tracking-[.16em] uppercase text-[var(--ink-2)] mb-3">Graph algorithms</div>
+  <h1 class="serif text-[clamp(42px,8vw,88px)] leading-[.95]">Pick a <span class="italic text-[var(--accent)]">study<span>.</span></span></h1>
+  <p class="mt-4 text-[14px] text-[var(--ink-2)] max-w-md">Two interactive walkthroughs — build a graph, hit next, watch each algorithm think.</p>
+
+  <div class="grid md:grid-cols-2 gap-4 mt-10">
+    <a href="djkstra.html" class="pick">
+      <span class="num">01 · shortest paths</span>
+      <span class="ttl">Dijkstra<span class="d">.</span></span>
+      <span class="sub">a garden of forking paths</span>
+      <span class="go">open <span class="a">→</span></span>
+    </a>
+    <a href="prims.html" class="pick">
+      <span class="num">02 · minimum spanning tree</span>
+      <span class="ttl">Prim&rsquo;s<span class="d">.</span></span>
+      <span class="sub">a tree of cheapest crossings</span>
+      <span class="go">open <span class="a">→</span></span>
+    </a>
+  </div>
+</main>
+</body>
+</html>
