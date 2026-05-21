@@ -283,6 +283,111 @@
   .nav-link:hover{border-color:var(--ink);color:var(--ink)}
   .nav-link.active{background:var(--ink);color:#fdfbf5;border-color:var(--ink)}
 
+  /* ---------- compact topbar + non-scrolling workspace ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 22px;border-bottom:1px solid var(--line);
+    background:var(--bg);height:60px;flex-shrink:0;
+  }
+  .topbar .brand{font-family:'Fraunces',serif;font-size:22px;letter-spacing:-.02em}
+  .topbar .brand .dot{color:var(--accent)}
+  .topbar .brand .it{font-style:italic}
+  .nav-right{display:flex;align-items:center;gap:8px}
+
+  .workspace{
+    height:calc(100vh - 60px);
+    padding:16px;
+    display:grid;
+    grid-template-columns:7fr 5fr;
+    grid-template-rows:1fr auto;
+    gap:14px;
+    overflow:hidden;
+  }
+  .ws-col{display:flex;flex-direction:column;min-height:0}
+  .ws-bottom{grid-column:1 / -1;min-height:0}
+  .workcard{
+    display:flex;flex-direction:column;
+    height:100%;min-height:0;
+    padding:14px 16px;
+    background:#fdfbf5;border:1px solid var(--line);border-radius:14px;
+  }
+  .card-top{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:10px;margin-bottom:10px;flex-wrap:wrap;
+  }
+  .svg-wrap{
+    flex:1;min-height:0;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+  .svg-wrap svg{width:100%;height:100%;max-height:100%}
+  .now-step{margin-top:10px;flex-shrink:0}
+
+  /* override fixed heights so they live inside the flex workcards */
+  .workcard .history-box,
+  .workcard .tree-frame{
+    flex:1;min-height:0;height:auto!important;overflow-y:auto;
+  }
+  .workcard .tree-frame{overflow:hidden}
+  .ws-bottom .history-box{height:auto!important}
+
+  @media (min-width:900px){
+    html,body{height:100vh;overflow:hidden}
+  }
+  @media (max-width:900px){
+    html,body{height:auto;overflow:auto}
+    .workspace{
+      height:auto;
+      grid-template-columns:1fr;
+      grid-template-rows:auto;
+      overflow:visible;
+    }
+    .ws-bottom{grid-column:auto}
+    .workcard{height:auto;min-height:0}
+    .svg-wrap{height:340px;flex:none}
+    .workcard .tree-frame{height:340px!important;flex:none}
+    .workcard .history-box{height:260px!important;flex:none}
+  }
+
+  /* ---------- modal ---------- */
+  .modal-bd{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(28,28,28,.5);backdrop-filter:blur(6px);
+    display:none;align-items:flex-start;justify-content:center;padding:40px 20px;
+    overflow-y:auto;
+  }
+  .modal-bd.open{display:flex;animation:bdfade .25s ease}
+  @keyframes bdfade{from{opacity:0}to{opacity:1}}
+  .modal{
+    background:var(--bg);border:1px solid var(--line);border-radius:18px;
+    padding:32px 36px 26px;
+    max-width:1000px;width:100%;
+    position:relative;
+    animation:modalIn .35s cubic-bezier(.34,1.4,.5,1);
+  }
+  @keyframes modalIn{
+    from{opacity:0;transform:translateY(16px) scale(.97)}
+    to{opacity:1;transform:translateY(0) scale(1)}
+  }
+  .modal-title{
+    font-family:'Fraunces',serif;font-size:46px;line-height:.95;
+    letter-spacing:-.02em;margin-bottom:6px;
+  }
+  .modal-desc{font-size:13.5px;color:var(--ink-2);margin-bottom:14px;line-height:1.5;max-width:54ch}
+  .modal-close{
+    position:absolute;top:14px;right:14px;
+    width:36px;height:36px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);background:#fdfbf5;
+    font-size:22px;color:var(--ink-2);cursor:pointer;line-height:1;
+    transition:all .2s ease;
+  }
+  .modal-close:hover{border-color:var(--ink);color:var(--ink)}
+  @media (max-width:640px){
+    .modal{padding:24px 22px 18px}
+    .modal-title{font-size:34px}
+  }
+
   /* prevent any accidental horizontal scroll */
   html,body{overflow-x:hidden}
   .now-step .ns-text,
@@ -316,29 +421,86 @@
 </head>
 <body>
 
-<main class="max-w-7xl mx-auto px-5 py-12 md:py-16">
+<header class="topbar">
+  <span class="brand"><span class="it">Prim&rsquo;s</span><span class="dot">.</span></span>
+  <div class="nav-right">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="djkstra.html" class="nav-link">Dijkstra</a>
+    <a href="prims.html" class="nav-link active">Prim&rsquo;s</a>
+    <button id="open-modal" class="btn btn-primary">Configure</button>
+  </div>
+</header>
 
-  <header class="mb-8 reveal d1">
-    <div class="flex items-center justify-between mb-3 gap-3 flex-wrap">
-      <div class="label">Algorithm · 002</div>
-      <div class="flex items-center gap-2">
-        <a href="djkstra.html" class="nav-link">Dijkstra</a>
-        <a href="prims.html" class="nav-link active">Prim&rsquo;s</a>
+<main class="workspace">
+
+  <!-- GRAPH -->
+  <section class="ws-col">
+    <div class="workcard">
+      <div class="card-top">
+        <span class="status">
+          <span>Step <span id="step-num" class="num">0</span> / <span id="step-total" class="num">0</span></span>
+        </span>
+        <div class="flex items-center gap-2">
+          <button id="reset" class="btn">Reset</button>
+          <button id="next" class="btn btn-primary">Next &rarr;</button>
+        </div>
+      </div>
+      <div class="svg-wrap">
+        <svg id="graph" viewBox="0 0 600 460" preserveAspectRatio="xMidYMid meet">
+          <g id="edges"></g>
+          <g id="nodes"></g>
+        </svg>
+      </div>
+      <div id="now-step" class="now-step">
+        <div class="ns-tag">Now</div>
+        <div class="ns-text" id="step-text">Press <span class="it">configure</span> to set up the graph, then press <span class="it">next</span>.</div>
       </div>
     </div>
-    <h1 class="serif text-[clamp(40px,7vw,76px)] leading-[0.95]">
-      <span class="it text-[var(--accent)]">Prim&rsquo;s</span><span class="text-[var(--accent)]">.</span>
-    </h1>
-    <p class="mt-3 text-[15px] text-[var(--ink-2)] max-w-md">
-      Step through Prim&rsquo;s algorithm. Pick a seed node &mdash; a minimum spanning tree
-      grows outward, one cheapest edge at a time.
-    </p>
-  </header>
+  </section>
 
-  <!-- ROW 1 · inputs -->
-  <section class="card p-6 mb-6 reveal d2">
-    <div class="grid md:grid-cols-12 gap-6 items-start">
+  <!-- TREE -->
+  <section class="ws-col">
+    <div class="workcard">
+      <div class="card-top">
+        <div class="label">Spanning tree</div>
+        <span class="text-[11px] text-[var(--ink-3)]" id="mst-count">0 / 0 nodes</span>
+      </div>
+      <div class="tree-frame">
+        <div id="tree-empty" class="tree-empty">no nodes added yet &mdash; press next to begin</div>
+        <svg id="tree-svg" viewBox="0 0 480 400" preserveAspectRatio="xMidYMid meet">
+          <g id="tree-edges"></g>
+          <g id="tree-nodes"></g>
+        </svg>
+      </div>
+      <div class="tree-summary mt-2">
+        <span>Total weight</span>
+        <span class="v" id="mst-total">&mdash;</span>
+      </div>
+    </div>
+  </section>
 
+  <!-- STEP HISTORY (bottom, full width) -->
+  <section class="ws-bottom">
+    <div class="workcard" style="height:200px">
+      <div class="card-top">
+        <div class="label">Step history</div>
+        <span class="text-[11px] text-[var(--ink-3)]" id="hist-count">0 steps</span>
+      </div>
+      <div id="history" class="history-box">
+        <div class="hitem empty"><div class="ht">no steps yet &mdash; press next to begin</div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ─── modal ─── -->
+<div id="modal-bd" class="modal-bd" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true">
+    <button id="modal-close" class="modal-close" aria-label="close">&times;</button>
+    <div class="modal-title">Configure <span class="it text-[var(--accent)]">graph</span><span class="text-[var(--accent)]">.</span></div>
+    <p class="modal-desc">Set how many nodes are in the graph, choose where Prim&rsquo;s should start growing from, and edit any edge weight. Changes apply live &mdash; close the panel to watch the MST take shape.</p>
+
+    <div class="grid md:grid-cols-12 gap-6 mt-4">
       <div class="md:col-span-3">
         <div class="label mb-3">Nodes</div>
         <div class="flex items-center gap-4">
@@ -346,7 +508,7 @@
           <span id="size-out" class="serif text-2xl w-6 text-right">5</span>
         </div>
         <p class="text-[12px] text-[var(--ink-3)] mt-4 leading-relaxed">
-          Drag the slider to change how many nodes are in the graph.
+          Drag to change how many nodes are in the graph.
         </p>
       </div>
 
@@ -354,7 +516,7 @@
         <div class="label mb-3">Seed node</div>
         <div class="picker" id="src-picker"></div>
         <p class="text-[12px] text-[var(--ink-3)] mt-4 leading-relaxed">
-          The MST grows outward from this node, adding cheapest edges first.
+          The MST grows outward from this node, adding the cheapest crossing edge each step.
         </p>
       </div>
 
@@ -369,84 +531,12 @@
         </p>
       </div>
     </div>
-  </section>
 
-  <!-- ROW 2 · graph (left) · MST construction (right) -->
-  <div class="grid md:grid-cols-12 gap-6 mb-6">
-
-    <!-- GRAPH -->
-    <section class="md:col-span-7 reveal d3">
-      <div class="card p-5 h-full flex flex-col">
-
-        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <span class="status">
-            <span>Step <span id="step-num" class="num">0</span> / <span id="step-total" class="num">0</span></span>
-          </span>
-          <div class="flex items-center gap-2">
-            <button id="reset" class="btn">Reset</button>
-            <button id="next" class="btn btn-primary">Next →</button>
-          </div>
-        </div>
-
-        <div class="relative">
-          <svg id="graph" viewBox="0 0 600 460" class="w-full h-auto" style="aspect-ratio:600/460">
-            <g id="edges"></g>
-            <g id="nodes"></g>
-          </svg>
-        </div>
-
-        <div id="now-step" class="now-step">
-          <div class="ns-tag">Now</div>
-          <div class="ns-text" id="step-text">Press next to begin</div>
-        </div>
-
-        <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-[var(--ink-2)]">
-          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full border border-[var(--ink)]"></span>seed</span>
-          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full" style="background:var(--accent)"></span>just added</span>
-          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full" style="background:var(--ink)"></span>in MST</span>
-          <span class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full" style="border:1.5px dashed var(--accent)"></span>frontier</span>
-          <span class="flex items-center gap-2"><span class="inline-block w-4 h-[2px]" style="background:var(--ink)"></span>MST edge</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- MST TREE -->
-    <section class="md:col-span-5 reveal d3" style="animation-delay:.4s">
-      <div class="card px-5 pt-5 pb-3 h-full flex flex-col">
-        <div class="flex items-center justify-between mb-3">
-          <div class="label">Spanning tree</div>
-          <span class="text-[11px] text-[var(--ink-3)]" id="mst-count">0 / 0 nodes</span>
-        </div>
-        <div class="tree-frame">
-          <div id="tree-empty" class="tree-empty">no nodes added yet &mdash; press next to begin</div>
-          <svg id="tree-svg" viewBox="0 0 480 400" preserveAspectRatio="xMidYMid meet">
-            <g id="tree-edges"></g>
-            <g id="tree-nodes"></g>
-          </svg>
-        </div>
-        <div class="tree-summary">
-          <span>Total weight</span>
-          <span class="v" id="mst-total">&mdash;</span>
-        </div>
-      </div>
-    </section>
+    <div class="mt-6 flex justify-end gap-2">
+      <button id="modal-done" class="btn btn-primary">Done</button>
+    </div>
   </div>
-
-  <!-- ROW 3 · step history (full width) -->
-  <div class="reveal d4">
-    <section class="card p-5">
-      <div class="flex items-center justify-between mb-3">
-        <div class="label">Step history</div>
-        <span class="text-[11px] text-[var(--ink-3)]" id="hist-count">0 steps</span>
-      </div>
-      <div id="history" class="history-box">
-        <div class="hitem empty"><div class="ht">no steps yet &mdash; press next to begin</div></div>
-      </div>
-    </section>
-  </div>
-
-
-</main>
+</div>
 
 <script>
 const LETTERS=['A','B','C','D','E','F','G','H'];
@@ -641,13 +731,19 @@ function prims(){
   const steps=[];
   const mstEdges=[];
 
+  const fmt = x => x===Infinity ? '∞' : String(x);
+
   steps.push({
     type:'start',
     key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],
-    msg:`Begin Prim&rsquo;s — every node starts with key ∞ except ${LETTERS[state.src]} at 0.`
+    msg:`Initialise. The seed is <b>${LETTERS[state.src]}</b> &mdash; its key (cheapest edge into the tree) is <b>0</b>. Every other node starts at <b>∞</b> because we don&rsquo;t know of any way to reach it yet.`
   });
 
   for(let count=0;count<n;count++){
+    // build candidate list of non-MST nodes with finite keys
+    const cands=[];
+    for(let vv=0;vv<n;vv++) if(!inMST[vv] && key[vv]<Infinity) cands.push({n:vv, val:key[vv], par:parent[vv]});
+
     // pick min-key non-MST vertex
     let u=-1, best=Infinity;
     for(let v=0;v<n;v++) if(!inMST[v] && key[v]<best){best=key[v];u=v}
@@ -659,33 +755,47 @@ function prims(){
       addedEdge={u:parent[u],v:u,w:m[parent[u]][u]};
       mstEdges.push(addedEdge);
     }
+
+    let addMsg;
+    if(parent[u]===null){
+      addMsg = `Start the tree with the seed node <b>${LETTERS[u]}</b>. (Its key is 0, which is trivially the smallest.)`;
+    } else if(cands.length<=1){
+      addMsg = `Only one candidate left &mdash; <b>${LETTERS[u]}</b> (via ${LETTERS[parent[u]]}, weight ${m[parent[u]][u]}). Add it.`;
+    } else {
+      const compare = cands
+        .map(c => c.n===u
+          ? `<b>${LETTERS[c.n]}:${c.val}</b>`
+          : `${LETTERS[c.n]}:${c.val}`)
+        .join(' &middot; ');
+      const losers = cands.filter(c=>c.n!==u).map(c=>`${LETTERS[c.n]}(${c.val})`).join(', ');
+      addMsg = `Compare frontier candidates &mdash; ${compare}. The cheapest is <b>${LETTERS[u]}</b> at <b>${best}</b>; ${losers} are larger. Add <b>${LETTERS[u]}</b> via edge <b>${LETTERS[parent[u]]} &mdash; ${LETTERS[u]}</b> (weight ${m[parent[u]][u]}).`;
+    }
+
     steps.push({
-      type:'add', u, edge:addedEdge, order:mstEdges.length + (parent[u]===null?1:0),
+      type:'add', u, edge:addedEdge,
       key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],
-      msg: parent[u]===null
-        ? `Add ${LETTERS[u]} to the MST as the seed node.`
-        : `Add ${LETTERS[u]} via edge ${LETTERS[parent[u]]} &mdash; ${LETTERS[u]} (weight ${m[parent[u]][u]}).`
+      msg: addMsg
     });
 
-    // examine neighbors
-    for(let v=0;v<n;v++){
-      if(m[u][v]>0 && !inMST[v]){
-        const w=m[u][v];
-        if(w<key[v]){
-          const old=key[v];
-          key[v]=w; parent[v]=u;
+    // examine neighbors of u
+    for(let vv=0;vv<n;vv++){
+      if(m[u][vv]>0 && !inMST[vv]){
+        const w=m[u][vv];
+        const oldStr=fmt(key[vv]);
+        if(w<key[vv]){
+          key[vv]=w; parent[vv]=u;
           steps.push({
-            type:'update', u, v, w,
+            type:'update', u, v:vv, w,
             key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],
             updated:true,
-            msg:`Edge ${LETTERS[u]} &mdash; ${LETTERS[v]} (${w}) improves ${LETTERS[v]}&rsquo;s best link (was ${old===Infinity?'∞':old}).`
+            msg:`Look at edge <b>${LETTERS[u]} &mdash; ${LETTERS[vv]}</b> (weight ${w}). ${LETTERS[vv]}&rsquo;s previous best was <b>${oldStr}</b>; ${w} &lt; ${oldStr}, so it&rsquo;s now cheaper to reach ${LETTERS[vv]} via ${LETTERS[u]}. Update key to <b>${w}</b>.`
           });
         } else {
           steps.push({
-            type:'check', u, v, w,
+            type:'check', u, v:vv, w,
             key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],
             updated:false,
-            msg:`Edge ${LETTERS[u]} &mdash; ${LETTERS[v]} (${w}) doesn&rsquo;t beat ${LETTERS[v]}&rsquo;s current best ${key[v]}.`
+            msg:`Look at edge <b>${LETTERS[u]} &mdash; ${LETTERS[vv]}</b> (weight ${w}). ${LETTERS[vv]}&rsquo;s current best is <b>${oldStr}</b>, and ${w} &ge; ${oldStr}, so keep <b>${oldStr}</b>.`
           });
         }
       }
@@ -698,8 +808,8 @@ function prims(){
     type:'done',
     key:[...key],parent:[...parent],inMST:[...inMST],edges:[...mstEdges],total,visited,
     msg: visited===n
-      ? `MST complete — ${mstEdges.length} edges, total weight ${total}.`
-      : `Stopped — only ${visited} of ${n} nodes reachable from ${LETTERS[state.src]}. MST weight ${total}.`
+      ? `MST complete &mdash; <b>${mstEdges.length}</b> edges with total weight <b>${total}</b>.`
+      : `Stopped &mdash; only <b>${visited}</b> of <b>${n}</b> nodes were reachable from ${LETTERS[state.src]}. Spanning forest weight is <b>${total}</b>.`
   });
   return steps;
 }
@@ -711,7 +821,7 @@ function rebuild(){
   clearGraphState();
   $stepNum.textContent = '0';
   $stepTotal.textContent = state.steps.length;
-  $stepText.textContent = 'Press next to begin';
+  $stepText.innerHTML = 'Press <span class="it">next</span> to walk through the algorithm step by step.';
   $next.textContent = 'Next →';
   $next.removeAttribute('disabled');
 
@@ -983,6 +1093,26 @@ document.getElementById('shuffle').addEventListener('click',()=>{
 });
 
 initMatrix(5);
+
+/* ---------- modal ---------- */
+const $modalBd = document.getElementById('modal-bd');
+const $openModal = document.getElementById('open-modal');
+const $closeModal = document.getElementById('modal-close');
+const $doneModal = document.getElementById('modal-done');
+
+function openModal(){
+  $modalBd.classList.add('open');
+  $modalBd.setAttribute('aria-hidden','false');
+}
+function closeModal(){
+  $modalBd.classList.remove('open');
+  $modalBd.setAttribute('aria-hidden','true');
+}
+$openModal.addEventListener('click', openModal);
+$closeModal.addEventListener('click', closeModal);
+$doneModal.addEventListener('click', closeModal);
+$modalBd.addEventListener('click', e => { if(e.target===$modalBd) closeModal(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 </script>
 </body>
 </html>
